@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'firstscreen.dart';
 import 'registersreen.dart';
 
@@ -12,40 +13,30 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _passwordController = TextEditingController();
   String _errorMessage = '';
 
-  // Usuario y clave quemados
-  static Map<String, String> _users = {
-    'user': 'password'
-  };
-
-  void _login() {
-    String username = _usernameController.text;
-    String password = _passwordController.text;
-
-    if (_users.containsKey(username) && _users[username] == password) {
+  Future<void> _login() async {
+    try {
+      UserCredential userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: _usernameController.text,
+        password: _passwordController.text,
+      );
+      // Si el inicio de sesión es exitoso, navegar a la pantalla FirstScreen
       Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => FirstScreen()),
       );
-    } else {
-      setState(() {
-        _errorMessage = 'Usuario o contraseña incorrectos';
-      });
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'user-not-found') {
+        setState(() {
+          _errorMessage = 'Usuario no encontrado';
+        });
+      } else if (e.code == 'wrong-password') {
+        setState(() {
+          _errorMessage = 'Contraseña incorrecta';
+        });
+      }
+    } catch (e) {
+      print(e);
     }
-  }
-
-  void _goToRegister() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => RegisterScreen(onRegister: _registerUser),
-      ),
-    );
-  }
-
-  void _registerUser(String username, String password) {
-    setState(() {
-      _users[username] = password;
-    });
   }
 
   @override
@@ -61,12 +52,16 @@ class _LoginScreenState extends State<LoginScreen> {
           children: <Widget>[
             TextField(
               controller: _usernameController,
-              decoration: InputDecoration(labelText: 'Usuario'),
+              decoration: InputDecoration(labelText: 'Correo electrónico'),
             ),
+            SizedBox(height: 20),
             TextField(
               controller: _passwordController,
-              decoration: InputDecoration(labelText: 'Contraseña'),
               obscureText: true,
+              decoration: InputDecoration(
+                border: OutlineInputBorder(),
+                labelText: 'Contraseña',
+              ),
             ),
             SizedBox(height: 20),
             ElevatedButton(
@@ -81,7 +76,14 @@ class _LoginScreenState extends State<LoginScreen> {
             SizedBox(height: 20),
             TextButton(
               child: Text('Registrarse'),
-              onPressed: _goToRegister,
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => RegisterScreen(),
+                  ),
+                );
+              },
             ),
           ],
         ),
